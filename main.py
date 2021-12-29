@@ -101,7 +101,7 @@ def transform_batch(batch, lang_token_map, tokenizer):
     input_ids, target_ids = formatted_data
     inputs.append(input_ids.unsqueeze(0))
     targets.append(target_ids.unsqueeze(0))
-    
+
   batch_input_ids = torch.cat(inputs).to(device)
   batch_target_ids = torch.cat(targets).to(device)
 
@@ -146,35 +146,38 @@ def eval_model(model, gdataset, max_iters=8):
 
 for epoch_idx in range(n_epochs):
   # Randomize data order
-  data_generator = get_data_generator(train_dataset, LANG_TOKEN_MAPPING,
+  try:
+    data_generator = get_data_generator(train_dataset, LANG_TOKEN_MAPPING,
                                       tokenizer, batch_size)
                 
-  for batch_idx, (input_batch, label_batch) \
-      in tqdm(enumerate(data_generator), total=n_batches):
-    optimizer.zero_grad()
+    for batch_idx, (input_batch, label_batch) \
+        in tqdm(enumerate(data_generator), total=n_batches):
+      optimizer.zero_grad()
     
     # Forward pass
-    model_out = model.forward(
-        input_ids = input_batch,
-        labels = label_batch)
+      model_out = model.forward(
+          input_ids = input_batch,
+          labels = label_batch)
 
     # Calculate loss and update weights
-    loss = model_out.loss
-    losses.append(loss.item())
-    loss.backward()
-    optimizer.step()
-    scheduler.step()
+      loss = model_out.loss
+      losses.append(loss.item())
+      loss.backward()
+      optimizer.step()
+      scheduler.step()
 
-    # Print training update info
-    if (batch_idx + 1) % print_freq == 0:
-      avg_loss = np.mean(losses[-print_freq:])
-      print('Epoch: {} | Step: {} | Avg. loss: {:.3f} | lr: {}'.format(
-          epoch_idx+1, batch_idx+1, avg_loss, scheduler.get_last_lr()[0]))
+      # Print training update info
+      if (batch_idx + 1) % print_freq == 0:
+        avg_loss = np.mean(losses[-print_freq:])
+        print('Epoch: {} | Step: {} | Avg. loss: {:.3f} | lr: {}'.format(
+            epoch_idx+1, batch_idx+1, avg_loss, scheduler.get_last_lr()[0]))
       
-    if (batch_idx + 1) % checkpoint_freq == 0:
-      test_loss = eval_model(model, test_dataset)
-      print('Saving model with test loss of {:.3f}'.format(test_loss))
-      torch.save(model.state_dict(), model_path)
+      if (batch_idx + 1) % checkpoint_freq == 0:
+        test_loss = eval_model(model, test_dataset)
+        print('Saving model with test loss of {:.3f}'.format(test_loss))
+        torch.save(model.state_dict(), model_path)
+  except:
+      continue
 
 torch.save(model.state_dict(), model_path)
 
